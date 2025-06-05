@@ -1,0 +1,129 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter & VSCode
+.ipynb_checkpoints/
+.vscode/
+*.code-workspace
+
+# Virtualenv
+.env/
+.venv/
+env/
+venv/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Model & Data
+*.ckpt
+*.pt
+*.pth
+*.npz
+*.onnx
+*.tflite
+*.mlmodel
+*.h5
+*.pb
+*.npy
+*.joblib
+*.pkl
+*.tar
+*.zip
+
+# Logs and outputs
+logs/
+*.log
+*.out
+*.err
+wandb/
+tensorboard/
+runs/
+
+# Hugging Face cache
+.cache/
+huggingface/
+
+# Docker
+*.pid
+*.sock
+*.log
+*.db
+__docker/
+docker-compose.override.yml
+
+# Submodules or external code
+thirdparty/
+external/
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Jupyter & VSCode
+.ipynb_checkpoints/
+.vscode/
+*.code-workspace
+
+# Virtualenv
+.env/
+.venv/
+env/
+venv/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Model & Data
+*.ckpt
+*.pt
+*.pth
+*.npz
+*.onnx
+*.tflite
+*.mlmodel
+*.h5
+*.pb
+*.npy
+*.joblib
+*.pkl
+*.tar
+*.zip
+
+# Logs and outputs
+logs/
+*.log
+*.out
+*.err
+wandb/
+tensorboard/
+runs/
+
+# Hugging Face cache
+.cache/
+huggingface/
+
+# Docker
+*.pid
+*.sock
+*.log
+*.db
+__docker/
+docker-compose.override.yml
+
+# Submodules or external code
+thirdparty/
+external/
+
