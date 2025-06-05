@@ -14,7 +14,7 @@ import torch.nn.functional as F
 
 def gen_gaussian_heatmap(imgSize=200):
     circle_img = np.zeros((imgSize, imgSize), np.float32)
-    circle_mask = cv2.circle(circle_img, (imgSize // 2, imgSize // 2), imgSize // 2, 1, -1)
+    circle_mask = cv2.circle(circle_img, (imgSize//2, imgSize//2), imgSize//2, 1, -1)
 
     isotropicGrayscaleImage = np.zeros((imgSize, imgSize), np.float32)
 
@@ -26,7 +26,7 @@ def gen_gaussian_heatmap(imgSize=200):
 
     isotropicGrayscaleImage = isotropicGrayscaleImage * circle_mask
     isotropicGrayscaleImage = (isotropicGrayscaleImage / np.max(isotropicGrayscaleImage)).astype(np.float32)
-    isotropicGrayscaleImage = (isotropicGrayscaleImage / np.max(isotropicGrayscaleImage) * 255).astype(np.uint8)
+    isotropicGrayscaleImage = (isotropicGrayscaleImage / np.max(isotropicGrayscaleImage)*255).astype(np.uint8)
 
     # isotropicGrayscaleImage = cv2.resize(isotropicGrayscaleImage, (40, 40))
     return isotropicGrayscaleImage
@@ -43,9 +43,9 @@ def draw_heatmap(img, center_coordinate, heatmap_template, side, width, height):
         print(center_coordinate, "x1, x2, y1, y2", x1, x2, y1, y2)
         return img
 
-    need_map = cv2.resize(heatmap_template, (x2 - x1, y2 - y1))
+    need_map = cv2.resize(heatmap_template, (x2-x1, y2-y1))
 
-    img[y1:y2, x1:x2] = need_map
+    img[y1:y2,x1:x2] = need_map
 
     return img
 
@@ -57,9 +57,10 @@ def generate_gassian_heatmap(pred_tracks, pred_visibility=None, image_size=None,
     point_index_list = [point_idx for point_idx in range(num_points)]
     heatmap_template = gen_gaussian_heatmap()
 
+
     image_list = []
     for frame_idx in range(num_frames):
-
+        
         img = np.zeros((height, width), np.float32)
         for point_idx in point_index_list:
             px, py = pred_tracks[frame_idx, point_idx]
@@ -78,7 +79,7 @@ def generate_gassian_heatmap(pred_tracks, pred_visibility=None, image_size=None,
         img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_GRAY2RGB)
         img = torch.from_numpy(img).permute(2, 0, 1).contiguous()
         image_list.append(img)
-
+    
     video_gaussion_map = torch.stack(image_list, dim=0)
 
     return video_gaussion_map

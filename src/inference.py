@@ -12,7 +12,7 @@ import argparse
 def main(args) :
 
     # ⚡️ (1) 경로 설정 및 이미지 로드 ------------------------------------------------
-    folders = ['012_Experiment']
+    folders = ['012_flood']
     for folder in folders:
 
         args.folder = folder

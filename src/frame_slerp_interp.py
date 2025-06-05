@@ -97,8 +97,6 @@ def create_image_grid(images, rows, cols, target_size=(256, 256)):
 def save_combined_frames(batch_output, validation_images, validation_control_images, output_folder):
     # Flatten batch_output, which is a list of lists of PIL Images
     flattened_batch_output = [img for sublist in batch_output for img in sublist]
-
-    # Combine frames into a list without converting (since they are already PIL Images)
     combined_frames = validation_images + validation_control_images + flattened_batch_output
 
     # Calculate rows and columns for the grid

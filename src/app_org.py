@@ -27,7 +27,6 @@ import warnings
 
 print("gr file", gr.__file__)
 
-
 def get_args():
     import argparse
     parser = argparse.ArgumentParser()
@@ -66,23 +65,16 @@ def get_args():
 
     return args
 
-
 def interpolate_trajectory(points, n_points):
     x = [point[0] for point in points]
     y = [point[1] for point in points]
-
     t = np.linspace(0, 1, len(points))
-    # fx = interp1d(t, x, kind='cubic')
-    # fy = interp1d(t, y, kind='cubic')
     fx = PchipInterpolator(t, x)
     fy = PchipInterpolator(t, y)
-
     new_t = np.linspace(0, 1, n_points)
-
     new_x = fx(new_t)
     new_y = fy(new_t)
     new_points = list(zip(new_x, new_y))
-
     return new_points
 
 
@@ -228,6 +220,9 @@ def save_gifs_side_by_side(
         assert point_tracks is not None
         point_tracks_path = gif_path.replace(".gif", ".npy")
         np.save(point_tracks_path, point_tracks.cpu().numpy())
+
+
+
 
     # Function to combine GIFs side by side
     def combine_gifs_side_by_side(gif_paths, output_path):
@@ -606,7 +601,8 @@ def delete_last_step(tracking_points, first_frame_path, last_frame_path):
     return tracking_points, trajectory_map, trajectory_map_end
 
 
-def add_tracking_points(tracking_points, first_frame_path, last_frame_path,
+def add_tracking_points(tracking_points,
+                        first_frame_path, last_frame_path,
                         evt: gr.SelectData):  # SelectData is a subclass of EventData
     print(f"You selected {evt.value} at {evt.index} from {evt.target}")
     tracking_points.constructor_args['value'][-1].append(evt.index)

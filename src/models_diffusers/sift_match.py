@@ -7,11 +7,12 @@ import torch
 
 
 def sift_match(
-        img1, img2,
-        thr=0.5,
-        topk=5, method="max_dist",
-        output_path="sift_matches.png",
+    img1, img2,
+    thr=0.5, 
+    topk=5, method="max_dist",
+    output_path="sift_matches.png",
 ):
+    
     assert method in ["max_dist", "random", "max_score", "max_score_even"]
 
     # img1 and img2 are PIL images
@@ -99,8 +100,7 @@ def sift_match(
             topk = min(topk, len(idx))
             idx = np.random.choice(idx, topk, replace=False)
         elif method == "max_score":
-            import pdb;
-            pdb.set_trace()
+            import pdb; pdb.set_trace()
             raise NotImplementedError
             # idx = np.argsort(distance_list)[:topk]
         else:
@@ -117,6 +117,7 @@ def sift_match(
     # )
     # img3 = cv2.drawMatchesKnn(img1, kp1, img2, kp2, good, None, **draw_params)
 
+
     # # manually draw the matches, the images are put in horizontal
     # img3 = np.concatenate([img1_rgb, img2_rgb], axis=1)  # (h, 2w, 3)
     # for m in good:
@@ -128,8 +129,7 @@ def sift_match(
 
     # manually draw the matches, the images are put in vertical. with 10 pixels margin
     margin = 10
-    img3 = np.zeros((img1_rgb.shape[0] + img2_rgb.shape[0] + margin, max(img1_rgb.shape[1], img2_rgb.shape[1]), 3),
-                    dtype=np.uint8)
+    img3 = np.zeros((img1_rgb.shape[0] + img2_rgb.shape[0] + margin, max(img1_rgb.shape[1], img2_rgb.shape[1]), 3), dtype=np.uint8)
     # the margin is white
     img3[:, :] = 255
     img3[:img1_rgb.shape[0], :img1_rgb.shape[1]] = img1_rgb
@@ -201,15 +201,15 @@ def interpolate_trajectory(points_torch, num_frames, t=None):
 
 # diffusion feature matching
 def point_tracking(
-        F0,
-        F1,
-        handle_points,
-        handle_points_init,
-        track_dist=5,
+    F0,
+    F1,
+    handle_points,
+    handle_points_init,
+    track_dist=5,
 ):
     # handle_points: (num_points, 2)
-    # NOTE:
-    # 1. all row and col are reversed
+    # NOTE: 
+    # 1. all row and col are reversed 
     # 2. handle_points in (y, x), not (x, y)
 
     # reverse row and col

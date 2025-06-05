@@ -556,7 +556,7 @@ class StableVideoDiffusionInterpControlPipeline(DiffusionPipeline):
         if middle_max_guidance:
             # big in middle, small at the beginning and end
             guidance_scale = torch.cat([guidance_scale, guidance_scale.flip(1)], dim=1)
-            # interpolate the guidance scale, from [1, 2*frames] to [1, frames]
+            # interpolate the guidance scale, from [1, 2*frames] to [1, frames] 
             guidance_scale = torch.nn.functional.interpolate(guidance_scale.unsqueeze(0), size=num_frames, mode='linear', align_corners=False)[0]
 
 
@@ -632,7 +632,7 @@ class StableVideoDiffusionInterpControlPipeline(DiffusionPipeline):
                         controlnet_cond=controlnet_image,
                         added_time_ids=added_time_ids,
                         conditioning_scale=controlnet_cond_scale,
-                        point_embedding=point_embedding if with_id_feature else None,  # NOTE
+                        point_embedding=point_embedding if with_id_feature else None,  # NOTE 
                         point_tracks=point_tracks,
                         guess_mode=False,
                         return_dict=False,
@@ -668,7 +668,7 @@ class StableVideoDiffusionInterpControlPipeline(DiffusionPipeline):
 
                     # shape: [b*f, c, h, w]
                     # self.guidance_scale: [1, f, 1, 1, 1]
-                    # matching_features:
+                    # matching_features: 
                     assert do_classifier_free_guidance
                     matching_features = rearrange(matching_features, '(b f) c h w -> b f c h w', b=2)
 
@@ -730,6 +730,8 @@ class StableVideoDiffusionInterpControlPipeline(DiffusionPipeline):
             # cast back to fp16 if needed
             if needs_upcasting:
                 self.vae.to(dtype=torch.float16)
+                # self.vae.to(dtype=torch.float32)
+                # latents = latents.to(torch.float32)
             frames = self.decode_latents(latents, num_frames, decode_chunk_size)
             frames = tensor2vid(frames, self.image_processor, output_type=output_type)
         else:

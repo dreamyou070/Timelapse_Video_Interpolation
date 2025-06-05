@@ -532,7 +532,6 @@ def main(args):
     )
 
     # Prepare everything with our `accelerator`.
-    print(f' set mask token')
     mask_token = unet.mask_token
     unet, optimizer, lr_scheduler, train_dataloader, controlnet = accelerator.prepare(
         unet, optimizer, lr_scheduler, train_dataloader, controlnet)
@@ -683,7 +682,12 @@ def main(args):
                 # --------------------------------------------------------------------------------------------------------------------
                 image_embeddings = batch['image_embeddings']            # batch, length=1,1024
                 image_end_embeddings = batch['image_end_embeddings']    # batch, length=1,1024
-                image_embeddings = torch.cat([image_embeddings, image_end_embeddings], dim=1) # batch, length=2,1024
+                if args.firstframe_conditioned :
+                    image_embeddings = image_embeddings
+                elif args.endframe_conditioned :
+                    image_embeddings = image_end_embeddings
+                else :
+                    image_embeddings = torch.cat([image_embeddings, image_end_embeddings], dim=1) # batch, length=2,1024
 
                 # --------------------------------------------------------------------------------------------------------------------
                 # 4. Controlnet Condition
@@ -692,6 +696,8 @@ def main(args):
                 # batch_size, frames, channels, height, width
                 point_embedding = None
                 point_tracks = batch['point_tracks'] #
+                if args.no_point_tracks :
+                    point_tracks = point_tracks * 0
                 point_tracks = point_tracks.to(device).to(image_embeddings.dtype)  # (f, p, 2)
 
                 # --------------------------------------------------------------------------------------------------------------------
@@ -728,6 +734,7 @@ def main(args):
                                added_time_ids=added_time_ids.to(dtype = weight_dtype),
                                return_dict=False,
                                **kwargs,)
+                # why it is not noise_prediction ?
                 model_pred, intermediate_features = output
                 target = latents
 
@@ -751,6 +758,25 @@ def main(args):
 
                 loss = torch.mean((weighing * target_diff).reshape(target.shape[0], -1),dim=1,) # batch shape loss
                 loss = loss.mean()
+
+                # ------------------------------------------------------------------------------------------------
+                # 8.3 FrameMatching
+                # ------------------------------------------------------------------------------------------------
+                if args.frame_matching:
+                    frame_matching_loss = 0.0
+                    for i in range(num_frames):
+                        model_frame = denoised_latents[:, i].float()
+                        target_frame = target[:, i].float()
+
+                        # 프레임당 MSE loss 사용 (원하면 L1로도 변경 가능)
+                        frame_loss = torch.nn.functional.mse_loss(model_frame, target_frame)
+                        frame_matching_loss += frame_loss
+
+                    frame_matching_loss = frame_matching_loss / num_frames
+
+                    # 기존 loss에 더함 (가중치 곱할 수도 있음: e.g., 0.1 * frame_matching_loss)
+                    loss = loss + frame_matching_loss
+
 
                 # ------------------------------------------------------------------------------------------------
                 # 8.2 Framewise slerp
@@ -845,52 +871,48 @@ def main(args):
 
                 train_loss = 0.0
 
-                if accelerator.is_main_process:
-                    # save checkpoints!
-                    if global_step % args.checkpointing_steps == 0:
-                        # _before_ saving state, check if this save would set us over the `checkpoints_total_limit`
-                        if args.checkpoints_total_limit is not None:
-                            checkpoints = os.listdir(args.output_dir)
-                            checkpoints = [
-                                d for d in checkpoints if d.startswith("checkpoint")]
-                            checkpoints = sorted(
-                                checkpoints, key=lambda x: int(x.split("-")[1]))
+                # ------------------------------------------------------------------------------------------------------------ #
+                # save checkpoints!
+                # ------------------------------------------------------------------------------------------------------------ #
+                if accelerator.is_main_process and global_step % args.checkpointing_steps == 0:
+                    if args.checkpoints_total_limit is not None:
+                        checkpoints = os.listdir(args.output_dir)
+                        checkpoints = [
+                            d for d in checkpoints if d.startswith("checkpoint")]
+                        checkpoints = sorted(
+                            checkpoints, key=lambda x: int(x.split("-")[1]))
 
-                            # before we save the new checkpoint, we need to have at _most_ `checkpoints_total_limit - 1` checkpoints
-                            if len(checkpoints) >= args.checkpoints_total_limit:
-                                num_to_remove = len(
-                                    checkpoints) - args.checkpoints_total_limit + 1
-                                removing_checkpoints = checkpoints[0:num_to_remove]
+                        # before we save the new checkpoint, we need to have at _most_ `checkpoints_total_limit - 1` checkpoints
+                        if len(checkpoints) >= args.checkpoints_total_limit:
+                            num_to_remove = len(
+                                checkpoints) - args.checkpoints_total_limit + 1
+                            removing_checkpoints = checkpoints[0:num_to_remove]
 
-                                logger.info(
-                                    f"{len(checkpoints)} checkpoints already exist, removing {len(removing_checkpoints)} checkpoints"
-                                )
-                                logger.info(
-                                    f"removing checkpoints: {', '.join(removing_checkpoints)}")
+                            logger.info(
+                                f"{len(checkpoints)} checkpoints already exist, removing {len(removing_checkpoints)} checkpoints"
+                            )
+                            logger.info(
+                                f"removing checkpoints: {', '.join(removing_checkpoints)}")
 
-                                for removing_checkpoint in removing_checkpoints:
-                                    removing_checkpoint = os.path.join(
-                                        args.output_dir, removing_checkpoint)
-                                    shutil.rmtree(removing_checkpoint)
+                            for removing_checkpoint in removing_checkpoints:
+                                removing_checkpoint = os.path.join(
+                                    args.output_dir, removing_checkpoint)
+                                shutil.rmtree(removing_checkpoint)
 
-                        save_path = os.path.join(
-                            args.output_dir, f"checkpoint-{global_step}")
-                        accelerator.save_state(save_path)
-                        logger.info(f"Saved state to {save_path}")
+                    save_path = os.path.join(
+                        args.output_dir, f"checkpoint-{global_step}")
+                    accelerator.save_state(save_path)
+                    logger.info(f"Saved state to {save_path}")
 
                     # ------------------------------------------------------------------------------------------------------------ #
                     # Evaluation
                     # ------------------------------------------------------------------------------------------------------------ #
-                    if ((global_step % args.validation_steps == 0) or (global_step == 1)):
-                        logger.info(
-                            f"Running validation... \n Generating {args.num_validation_images} videos."
+                    if accelerator.is_main_process and ((global_step % args.validation_steps == 0) or (global_step == 1)):
+                        logger.info(f"Running validation... \n Generating {args.num_validation_images} videos."
                         )
-                        # create pipeline
                         if args.use_ema:
                             ema_unet.store(unet.parameters())
                             ema_unet.copy_to(unet.parameters())
-                        # The models need unwrapping because for compatibility in distributed training mode.
-
                         pipeline = StableVideoDiffusionInterpControlPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid-xt",
                                                                                              unet=accelerator.unwrap_model(unet),
                                                                                              controlnet=accelerator.unwrap_model(controlnet),
@@ -900,42 +922,37 @@ def main(args):
                                                                                              torch_dtype=weight_dtype, )
                         pipeline = pipeline.to(accelerator.device)
                         pipeline.set_progress_bar_config(disable=True)
-                        # run inference
+
                         val_save_dir = os.path.join(
                             args.output_dir, "validation_images")
 
                         if not os.path.exists(val_save_dir):
                             os.makedirs(val_save_dir)
 
-                        with torch.autocast(str(accelerator.device).replace(":0", ""), enabled=accelerator.mixed_precision == "fp16"
-                        ):
-                            ###############
-                            # ⚡️ (1) 경로 설정 및 이미지 로드 ------------------------------------------------
-                            folders = ['008_flood', '009_flood', '010_flood']
-                            for i, folder in enumerate(folders) :
-                                base_image_dir = f'./assets/{folder}/input_frames'
-                                input_image_path = os.path.join(base_image_dir, 'flood_0.png')
-                                input_image_end_path = os.path.join(base_image_dir, 'flood_1.png')
-                                #output_dir = f'assets/{folder}/output_videos'
-                                #os.makedirs(output_dir, exist_ok=True)
+                        with torch.no_grad():
+                            with torch.autocast(str(accelerator.device).replace(":0", ""), enabled=accelerator.mixed_precision == "fp16"):
+                                folders = ['008_flood', '009_flood', '010_flood']
+                                for i, folder in enumerate(folders) :
+                                    base_image_dir = f'./assets/{folder}/input_frames'
+                                    input_image_path = os.path.join(base_image_dir, 'flood_0.png')
+                                    input_image_end_path = os.path.join(base_image_dir, 'flood_1.png')
+                                    model_lengths = [14,40]  # 생성할 프레임 수
+                                    width, height = 512, 320
+                                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                                    dtype = torch.float16
 
-                                model_lengths = [14,40]  # 생성할 프레임 수
-                                width, height = 512, 320
-                                device = "cuda" if torch.cuda.is_available() else "cpu"
-                                dtype = torch.float16
+                                    # ⚡️ (4) 입력 이미지 전처리
+                                    input_image = Image.open(input_image_path).convert('RGB').resize((width, height))
+                                    input_image_end = Image.open(input_image_end_path).convert('RGB').resize(
+                                        (width, height))
 
-                                # ⚡️ (4) 입력 이미지 전처리
-                                input_image = Image.open(input_image_path).convert('RGB').resize((width, height))
-                                input_image_end = Image.open(input_image_end_path).convert('RGB').resize(
-                                    (width, height))
+                                    for model_length in model_lengths :
+                                        # ⚡️ (5) Trajectory (dummy)
+                                        pred_tracks = torch.zeros((1, model_length, 2))  # (1, num_frames, 2) -> (num_frames, 1,2)
+                                        with_control = True
 
-                                for model_length in model_lengths :
-                                    # ⚡️ (5) Trajectory (dummy)
-                                    pred_tracks = torch.zeros((1, model_length, 2))  # (1, num_frames, 2) -> (num_frames, 1,2)
-                                    with_control = True
+                                        # ⚡️ (6) Video 생성
 
-                                    # ⚡️ (6) Video 생성
-                                    with torch.no_grad():
                                         video_frames = pipeline(
                                             input_image,
                                             # ------------------------------------------------------------------------------------------- #
@@ -965,13 +982,8 @@ def main(args):
                                         # log on wandb
                                         wandb.log({f"validation/sample_{i}": wandb.Video(output_gif,
                                                                                   caption=f"sample_{i}_length_{model_length}_global_step_{global_step}")}, step=global_step)
-
-
-
                         if args.use_ema:
-                            # Switch back to the original UNet parameters.
                             ema_controlnet.restore(controlnet.parameters())
-
                         del pipeline
                         torch.cuda.empty_cache()
 
@@ -1336,9 +1348,14 @@ if __name__ == "__main__":
         help=(
             "the validation control image"
         ),
-    )
+    ) #
+
     parser.add_argument('--use_slerp_loss', action='store_true', help='Enable SLERP-based frame interpolation loss')
-    parser.add_argument('--lambda_slerp', type=float, default=1.0, help='Weight for SLERP consistency loss')
+    parser.add_argument('--lambda_slerp', type=float, default=1.0, help='Weight for SLERP consistency loss') #
+    parser.add_argument('--no_point_tracks', action='store_true', help='disasble using point tracks')
+    parser.add_argument('--frame_matching', action='store_true', help='frame image matching') #
+    parser.add_argument('--firstframe_conditioned', action='store_true')
+    parser.add_argument('--endframe_conditioned', action='store_true')
     args = parser.parse_args()
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:

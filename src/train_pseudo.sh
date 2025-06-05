@@ -8,9 +8,9 @@ accelerate launch --config_file ../accelerate_config/acc_0.yaml \
     --output_dir /workspace/data/diffusion/Framer/Result/nerf_data_no_slerp \
     --report_to wandb \
     --wandb_project_name 'flood_video_project' \
-    --wandb_name 'nerf_data_no_slerp' \
+    --wandb_name 'nerf_data_no_point' \
     --checkpointing_steps 50 \
-    --validation_steps 50 \
+    --validation_steps 1000 \
     --checkpoints_total_limit 10 \
-    --sample_n_frames 5
+    --sample_n_frames 5 --no_point_tracks
 # if accelerator.mixed_precision == "fp16":
