@@ -1,1 +1,0 @@
-python inference.py --do_interpolation

@@ -1,36 +1,23 @@
 #!/bin/bash
 
-# (1) Conda 또는 환경 설정 (필요 시)
-# source ~/anaconda3/etc/profile.d/conda.sh
-# conda activate your_env_name
-
-# (2) 결과 저장 폴더
-result_folder="/workspace/data/diffusion/Framer/Result/base"
-
-# (3) 반복할 체크포인트 리스트
-device_num=3
-test_folders=("013_snow" "014_snow" "015_smog")
-
-# (4) 반복 실행
+name="base"
+result_folder="/workspace/data/diffusion/Framer/Result/${name}"
+device_num=2
+test_folders=("001" "002" "003" "004" "005" "006" "007" "008" "009" "010"
+              "011" "012" "013" "014" "015" "016" "017" "018" "019" "020" "021")
 
 echo "================================================================================================"
-echo "Running for Base"
+echo "Running for $ckpt"
 echo "================================================================================================"
 
 for test_folder in "${test_folders[@]}"; do
+  output_dir="${result_folder}/result/${ckpt}/${test_folder}_without_track"
   echo "----------- Testing ${test_folder} -----------"
 
-  CUDA_VISIBLE_DEVICES=$device_num python test.py \
-    --output_dir "${result_folder}/result/${ckpt}/${test_folder}" \
-    --first_frame "./assets/${test_folder}/input_frames/flood_0.png" \
-    --last_frame  "./assets/${test_folder}/input_frames/flood_1.png" \
-    --track_file  "./assets/${test_folder}/input_frames/track.txt" \
-    --num_frames 14 \
-    --width 512 \
-    --height 320 \
-    --controlnet_cond_scale 1.0 \
-    --motion_bucket_id 100 \
-    --dtype float32 \
-    --name ${test_folder} \
-    --base
+  CUDA_VISIBLE_DEVICES=${device_num} python test.py \
+    --output_dir "$output_dir" \
+    --model "${result_folder}/${ckpt}" \
+    --num_frames 14 --width 512 --height 320 \
+    --controlnet_cond_scale 1.0 --motion_bucket_id 100 --dtype float32 \
+    --with_no_track --without_controlnet --base
 done

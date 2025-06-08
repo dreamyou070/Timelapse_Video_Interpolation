@@ -18,9 +18,9 @@ import os
 import sys
 
 sys.path.insert(0, os.getcwd())
-from models_diffusers.controlnet_svd import ControlNetSVDModel
-from models_diffusers.unet_spatio_temporal_condition import UNetSpatioTemporalConditionModel
-from pipelines.pipeline_stable_video_diffusion_interp_control import StableVideoDiffusionInterpControlPipeline
+from models.controlnet_svd import ControlNetSVDModel
+from models.unet_spatio_temporal_condition import UNetSpatioTemporalConditionModel
+from pipelines.pipeline_stable_video_diffusion_efficient_interp import StableVideoDiffusionInterpControlPipeline
 from gradio_demo.utils_drag import *
 
 import warnings
@@ -391,8 +391,8 @@ class Drag:
             print(f' There is no guidance')
             sift_track_update = True
             controlnet_cond_scale = 0.5
-            from models_diffusers.sift_match import sift_match
-            from models_diffusers.sift_match import interpolate_trajectory as sift_interpolate_trajectory
+            from models.sift_match import sift_match
+            from models.sift_match import interpolate_trajectory as sift_interpolate_trajectory
             output_file_sift = os.path.join(args.output_dir, "sift.png")
             pred_tracks = sift_match(
                 image,
